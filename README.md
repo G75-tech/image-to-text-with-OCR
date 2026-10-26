@@ -9,7 +9,7 @@ Giai đoạn 1 dùng mô hình có sẵn; không huấn luyện lại OCR. Mặc
 
 ## Bắt đầu trên Windows
 
-Cần Python 3.10–3.12 (đã kiểm tra với Python 3.12). Mở PowerShell tại `G:\NLP\PJ_PhanLoai`:
+Cần Python 3.10–3.12 (đã kiểm tra với Python 3.12). Mở PowerShell tại `E:\Study\NLP\image-to-text-with-OCR-main`:
 
 ```powershell
 python -m venv .venv
@@ -22,7 +22,7 @@ Mở địa chỉ localhost do Streamlit in ra. Chọn nguồn **Dán ảnh**, b
 
 ## Lưu kết quả từng lần chạy
 
-Mỗi lần bấm Nhận dạng thành công, ứng dụng tự tạo thư mục riêng tại `G:\NLP\KetQua\OCR\YYYY-MM-DD\`. Thời gian trong tên thư mục theo giờ Việt Nam (+07:00):
+Mỗi lần bấm Nhận dạng thành công, ứng dụng tự tạo thư mục riêng tại `outputs/runs/YYYY-MM-DD/`. Thời gian trong tên thư mục theo giờ Việt Nam (+07:00):
 
 ```text
 YYYYMMDD_HHMMSS_mmm__backend__det-v6-size__rec-recognizer__ten-anh__id
@@ -136,3 +136,6 @@ Giữ nguyên văn bản OCR để có thể so sánh phân loại trên văn b�
 Nguồn: [PaddleOCR pipeline](https://www.paddleocr.ai/main/en/version3.x/pipeline_usage/OCR.html), [PP-OCRv6](https://www.paddleocr.ai/main/en/version3.x/algorithm/PP-OCRv6/PP-OCRv6.html), [VietOCR](https://github.com/pbcquoc/vietocr), [VNTC](https://github.com/duyvuleo/VNTC).
 
 Xem `VALIDATION.md` để biết những gì đã chạy thực tế và giới hạn còn lại.
+
+
+Updated local OCR modes: see [OCR_MODES.md](OCR_MODES.md).

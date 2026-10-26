@@ -9,6 +9,7 @@ from src.image_io import load_image
 from src.config import ROOT, RESULTS_ROOT
 from src.ocr.archive import save_run
 from src.ocr.engine import OCREngine
+from src.ocr.options import CONFIGURATIONS
 from src.ocr.export import annotated_image, json_text, png_bytes
 
 st.set_page_config(page_title="Đọc chữ tiếng Việt từ ảnh", page_icon="📄", layout="wide")
@@ -18,8 +19,8 @@ st.caption("Phạm vi: chữ in tiếng Việt, bố cục một cột. Kết qu
 
 
 @st.cache_resource
-def get_engine(model_size, backend, revision="cached-decoder-v1"):
-    return OCREngine(model_size=model_size, backend=backend)
+def get_engine(model_size, backend, tessdata_set="best", psm=3, revision="multi-backend-v2"):
+    return OCREngine(model_size=model_size, backend=backend, tessdata_set=tessdata_set, psm=psm)
 
 
 source = st.radio("Nguồn ảnh", ["Dán ảnh", "Tải ảnh", "Ảnh mẫu"], horizontal=True, key="image_source")
@@ -43,14 +44,20 @@ else:
     else:
         st.error("Chưa có ảnh mẫu. Hãy chạy scripts/make_demo.py theo README.")
 
+configuration = st.selectbox("Cấu hình OCR", list(CONFIGURATIONS),
+                              index=list(CONFIGURATIONS).index("v6_medium_vietocr"),
+                              format_func=lambda key: CONFIGURATIONS[key][0])
+_, backend, model_size = CONFIGURATIONS[configuration]
+uses_tesseract = backend in {"tesseract", "tesseract_vietocr"}
+tess_options = st.columns(2)
+tessdata_set = tess_options[0].selectbox("Bộ trọng số Tesseract", ["best", "fast", "standard"],
+                                       disabled=not uses_tesseract)
+psm = tess_options[1].selectbox("Bố cục Tesseract (PSM)", [3, 4, 6, 7, 11], disabled=not uses_tesseract)
+if backend in {"hybrid", "hybrid_v5", "tesseract_vietocr"}:
+    st.caption("VietOCR Transformer đọc chữ; mô hình phía trước chỉ tìm vùng. Giữ xử lý dòng dài của dự án mới.")
+if uses_tesseract:
+    st.caption("Tesseract dùng vie+eng; điểm mỗi vùng là điểm dòng, không phải xác suất đúng.")
 with st.form("recognize"):
-    backend = st.selectbox("Bộ nhận dạng chữ", ["hybrid", "ppocrv6"],
-                           format_func=lambda value: {"hybrid": "Tiếng Việt — VietOCR + vùng chữ PP-OCRv6",
-                                                     "ppocrv6": "Đa ngôn ngữ — PP-OCRv6 đầy đủ"}[value])
-    model_size = st.selectbox("Mô hình OCR", ["small", "tiny", "medium"],
-                              format_func=lambda value: {"small": "PP-OCRv6 Small — cân bằng",
-                                "tiny": "PP-OCRv6 Tiny — mô hình nhẹ",
-                                "medium": "PP-OCRv6 Medium — mô hình lớn"}[value])
     options = st.columns(2)
     rotation = options[0].selectbox("Xoay ảnh theo chiều kim đồng hồ", [0, 90, 180, 270],
                                     format_func=lambda value: f"{value}°")
@@ -65,7 +72,8 @@ if data is None:
     st.info("Dán ảnh bằng Ctrl+V trong ô phía trên, tải tệp hoặc chọn Ảnh mẫu.")
     st.stop()
 
-signature = (sha256(data).hexdigest(), rotation, min_score, source_name, model_size, backend)
+signature = (sha256(data).hexdigest(), rotation, min_score, source_name, model_size, backend,
+             tessdata_set if uses_tesseract else None, psm if uses_tesseract else None)
 saved = st.session_state.get("ocr_output")
 if saved and saved["signature"] != signature:
     st.session_state.pop("ocr_output", None)
@@ -80,7 +88,8 @@ if submitted:
     st.session_state.pop("ocr_output", None)
     try:
         with st.spinner("Đang đọc chữ… Lần đầu cần nạp mô hình."):
-            document = get_engine(model_size, backend).recognize(image, source_name, min_score)
+            document = get_engine(model_size, backend, tessdata_set if uses_tesseract else "best",
+                                  psm if uses_tesseract else 3).recognize(image, source_name, min_score)
         rendered = png_bytes(annotated_image(image, document))
         saved = {"signature": signature, "document": document, "directory": None,
                  "annotated_png": rendered, "run_id": uuid4().hex}

@@ -3,7 +3,7 @@ import os
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-RESULTS_ROOT = ROOT.parent / "KetQua" / "OCR"
+RESULTS_ROOT = ROOT / "outputs" / "runs"
 DETECTION_MODEL = "PP-OCRv6_small_det"
 RECOGNITION_MODEL = "vietocr_vgg_transformer"
 MAX_PIXELS = 20_000_000

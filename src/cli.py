@@ -17,7 +17,10 @@ def main() -> int:
     ocr.add_argument("--min-score", type=float, default=0.5)
     ocr.add_argument("--rotate", type=int, choices=[0, 90, 180, 270], default=0)
     ocr.add_argument("--model-size", choices=["tiny", "small", "medium"], default="small")
-    ocr.add_argument("--backend", choices=["ppocrv6", "hybrid"], default="hybrid")
+    ocr.add_argument("--backend", choices=["ppocrv6", "hybrid", "hybrid_v5", "ppocrv5", "ppocrv3",
+                                           "tesseract", "tesseract_vietocr"], default="hybrid")
+    ocr.add_argument("--tessdata-set", choices=["best", "fast", "standard"], default="best")
+    ocr.add_argument("--psm", type=int, choices=[3, 4, 6, 7, 11], default=3)
     evaluation = commands.add_parser("evaluate", help="So sánh văn bản OCR và bản chép chuẩn")
     evaluation.add_argument("--reference", type=Path, required=True)
     evaluation.add_argument("--prediction", type=Path, required=True)
@@ -41,7 +44,7 @@ def main() -> int:
         from src.ocr.export import save_result
         from src.ocr.archive import save_run
         image = load_image_file(args.image, args.rotate)
-        result = OCREngine(args.model_size, args.backend).recognize(image, args.image.name, args.min_score)
+        result = OCREngine(args.model_size, args.backend, args.tessdata_set, args.psm).recognize(image, args.image.name, args.min_score)
         if args.out is None:
             target = save_run(image, result, args.backend, args.model_size, args.image.read_bytes(), args.rotate)
         else:

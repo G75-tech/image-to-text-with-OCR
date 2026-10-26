@@ -25,8 +25,12 @@ def save_run(image: Image.Image, document, backend: str, model_size: str,
              source_bytes: bytes, rotation: int = 0, root: Path | None = None) -> Path:
     now = datetime.now(VIETNAM_TIME)
     recognition = "vietocr-transformer" if backend == "hybrid" else f"ppocrv6-{model_size}"
+    detector = f"v6-{model_size}"
+    if backend not in {"hybrid", "ppocrv6"}:
+        recognition = source_slug(document.recognition_model)
+        detector = source_slug(document.detection_model)
     name = (f"{now:%Y%m%d_%H%M%S}_{now.microsecond // 1000:03d}"
-            f"__{backend}__det-v6-{model_size}__rec-{recognition}"
+            f"__{backend}__det-{detector}__rec-{recognition}"
             f"__{source_slug(document.source_name)}__{uuid4().hex[:8]}")
     directory = (RESULTS_ROOT if root is None else Path(root)) / f"{now:%Y-%m-%d}" / name
     directory.mkdir(parents=True, exist_ok=False)
@@ -37,7 +41,8 @@ def save_run(image: Image.Image, document, backend: str, model_size: str,
                 "source_name": document.source_name, "source_sha256": sha256(source_bytes).hexdigest(),
                 "rotation_clockwise": rotation, "min_score": document.min_score,
                 "detection_model": document.detection_model, "recognition_model": document.recognition_model,
-                "decoder": "cached_greedy_batch" if backend == "hybrid" else "paddleocr",
+                "decoder": ("cached_greedy_batch" if backend in {"hybrid", "hybrid_v5", "tesseract_vietocr"}
+                            else "tesseract_lstm" if backend == "tesseract" else "paddleocr"),
                 "elapsed_seconds": document.elapsed_seconds, "timings_seconds": document.timings,
                 "files": {"input": "input.png", "regions": "annotated.png", "text": "text.txt",
                           "result": "result.json"}}
