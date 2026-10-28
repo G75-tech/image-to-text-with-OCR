@@ -12,8 +12,8 @@ from src.ocr.result import OCRDocument, parse_lines
 
 
 class HybridOCREngine:
-    def __init__(self, model_size: str = "small"):
-        self.detection_model = f"PP-OCRv6_{model_size}_det"
+    def __init__(self, model_size: str = "small", detection_model: str | None = None):
+        self.detection_model = detection_model or f"PP-OCRv6_{model_size}_det"
         self._pipeline = None
         self._recognizer = None
         self._lock = Lock()
@@ -101,24 +101,32 @@ class HybridOCREngine:
 
 class OCREngine:
     """API chung: mặc định v6 tìm vùng chữ + VietOCR nhận dạng tiếng Việt."""
-    def __init__(self, model_size: str = "small", backend: str = "hybrid"):
+    def __init__(self, model_size: str = "small", backend: str = "hybrid",
+                 tessdata_set: str = "best", psm: int = 3):
         if model_size not in {"tiny", "small", "medium"}:
             raise ValueError("Kích thước mô hình phải là tiny, small hoặc medium.")
-        if backend not in {"ppocrv6", "hybrid"}:
+        if backend not in {"ppocrv6", "hybrid", "hybrid_v5", "ppocrv5", "ppocrv3",
+                           "tesseract", "tesseract_vietocr"}:
             raise ValueError("Backend OCR không hợp lệ.")
         self.model_size = model_size
         self.backend = backend
         self._pipeline = None
         self._hybrid = HybridOCREngine(model_size) if backend == "hybrid" else None
+        if backend == "hybrid_v5":
+            self._hybrid = HybridOCREngine(model_size, "PP-OCRv5_server_det")
+        if backend in {"tesseract", "tesseract_vietocr"}:
+            from src.ocr.tesseract import TesseractOCREngine
+            self._hybrid = TesseractOCREngine(tessdata_set, psm, backend == "tesseract_vietocr")
         self._lock = Lock()
 
     def _get_pipeline(self):
         if self._pipeline is None:
             configure_runtime()
             from paddleocr import PaddleOCR
+            detection, recognition = self.model_names()
             self._pipeline = PaddleOCR(
-                text_detection_model_name=f"PP-OCRv6_{self.model_size}_det",
-                text_recognition_model_name=f"PP-OCRv6_{self.model_size}_rec",
+                text_detection_model_name=detection,
+                text_recognition_model_name=recognition,
                 use_doc_orientation_classify=False,
                 use_doc_unwarping=False,
                 use_textline_orientation=False,
@@ -126,6 +134,13 @@ class OCREngine:
                 text_rec_score_thresh=0.0,
             )
         return self._pipeline
+
+    def model_names(self):
+        if self.backend == "ppocrv3":
+            return "PP-OCRv3_mobile_det", "latin_PP-OCRv3_mobile_rec"
+        if self.backend == "ppocrv5":
+            return "PP-OCRv5_server_det", "latin_PP-OCRv5_mobile_rec"
+        return f"PP-OCRv6_{self.model_size}_det", f"PP-OCRv6_{self.model_size}_rec"
 
     def recognize(self, image: Image.Image, source_name: str = "image.png",
                   min_score: float = 0.5) -> OCRDocument:
@@ -151,7 +166,7 @@ class OCREngine:
             source_name=Path(source_name).name, width=image.width, height=image.height,
             lines=parse_lines(pages[0], min_score), min_score=min_score,
             elapsed_seconds=perf_counter() - started,
-            detection_model=f"PP-OCRv6_{self.model_size}_det",
-            recognition_model=f"PP-OCRv6_{self.model_size}_rec",
+            detection_model=self.model_names()[0],
+            recognition_model=self.model_names()[1],
             timings=timings,
         )

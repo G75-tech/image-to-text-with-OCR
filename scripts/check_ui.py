@@ -31,7 +31,7 @@ assert app.session_state["ocr_output"]["directory"] == directory, "Toggle create
 app.checkbox[0].check().run()
 assert app.session_state["ocr_output"]["run_id"] == run_id
 # Đổi cấu hình phải bỏ kết quả cũ, không hiển thị nhầm ảnh/văn bản.
-app.selectbox[1].select("tiny")
+app.selectbox[0].select("v6_tiny_vietocr")
 app.button[0].click().run(timeout=120)
 assert not app.exception
 assert not app.error
